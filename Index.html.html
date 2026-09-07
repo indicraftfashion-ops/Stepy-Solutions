@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Consignment Ledger — Meesho Order Risk Scanner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #EAE3D2;
+    --paper-dark: #DED4B8;
+    --ink: #262019;
+    --ink-soft: #55503f;
+    --rule: #B9AC85;
+    --red: #A8402F;
+    --red-bg: #F3DCD5;
+    --amber: #9C7A24;
+    --amber-bg: #F1E6C4;
+    --green: #3A6B4C;
+    --green-bg: #DCE9DE;
+    --grey-bg: #E7E0CC;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    padding:28px 18px 60px;
+  }
+  .sheet{
+    max-width:920px;
+    margin:0 auto;
+  }
+  header{
+    border-bottom:3px double var(--ink);
+    padding-bottom:16px;
+    margin-bottom:22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  header h1{
+    font-family:'Zilla Slab', serif;
+    font-weight:700;
+    font-size:30px;
+    margin:0 0 4px;
+    letter-spacing:0.2px;
+  }
+  header p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:13.5px;
+    max-width:480px;
+  }
+  .file-no{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+    text-align:right;
+    white-space:nowrap;
+  }
+
+  .upload-block{
+    border:1.5px solid var(--ink);
+    background:var(--paper-dark);
+    padding:22px;
+    margin-bottom:26px;
+    position:relative;
+  }
+  .upload-block::before{
+    content:"IN";
+    position:absolute;
+    top:-11px;
+    left:18px;
+    background:var(--paper);
+    padding:0 8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .upload-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  input[type=file]{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px;
+    max-width:100%;
+  }
+  button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    font-weight:500;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    padding:10px 18px;
+    cursor:pointer;
+    letter-spacing:0.3px;
+  }
+  button:disabled{opacity:0.4; cursor:default;}
+  button.secondary{
+    background:transparent;
+    color:var(--ink);
+    border:1.5px solid var(--ink);
+  }
+  .status{
+    margin-top:12px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    min-height:16px;
+  }
+  .status.err{ color:var(--red); }
+
+  section.results{ display:none; }
+  section.results.show{ display:block; }
+
+  .dash{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(120px,1fr));
+    gap:1px;
+    background:var(--rule);
+    border:1px solid var(--rule);
+    margin-bottom:28px;
+  }
+  .dash .cell{
+    background:var(--paper);
+    padding:14px 12px;
+    text-align:left;
+  }
+  .dash .cell .num{
+    font-family:'Zilla Slab', serif;
+    font-weight:700;
+    font-size:26px;
+    display:block;
+    line-height:1;
+  }
+  .dash .cell .lbl{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-top:5px;
+    display:block;
+  }
+  .dash .cell.hi .num{ color:var(--red); }
+  .dash .cell.mid .num{ color:var(--amber); }
+  .dash .cell.lo .num{ color:var(--green); }
+
+  h2.section-title{
+    font-family:'Zilla Slab', serif;
+    font-size:19px;
+    font-weight:600;
+    border-bottom:1.5px solid var(--ink);
+    padding-bottom:6px;
+    margin:34px 0 14px;
+  }
+  .note{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin:-6px 0 16px;
+    border-left:3px solid var(--rule);
+    padding-left:10px;
+  }
+
+  .flag-card{
+    border:1px solid var(--ink);
+    background:#fff8;
+    padding:14px 16px;
+    margin-bottom:10px;
+    position:relative;
+  }
+  .flag-card.high{ border-color:var(--red); background:var(--red-bg); }
+  .flag-card.medium{ border-color:var(--amber); background:var(--amber-bg); }
+
+  .stamp{
+    display:inline-block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    font-weight:600;
+    padding:2px 9px;
+    border:1.5px solid currentColor;
+    border-radius:2px;
+    transform:rotate(-2deg);
+    margin-right:8px;
+  }
+  .stamp.high{ color:var(--red); }
+  .stamp.medium{ color:var(--amber); }
+  .stamp.low{ color:var(--green); }
+
+  .flag-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .subno{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    font-weight:600;
+    letter-spacing:0.2px;
+  }
+  .score{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .flag-meta{
+    font-size:13px;
+    margin:4px 0;
+  }
+  .flag-meta b{ font-weight:600; }
+  .reasons{
+    margin:8px 0 0;
+    padding-left:18px;
+    font-size:13px;
+  }
+  .reasons li{ margin-bottom:3px; }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12.8px;
+  }
+  table th, table td{
+    border-bottom:1px solid var(--rule);
+    padding:8px 8px;
+    text-align:left;
+    vertical-align:top;
+  }
+  table th{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    font-size:11px;
+    color:var(--ink-soft);
+    border-bottom:1.5px solid var(--ink);
+  }
+  table td.mono, table th.mono{ font-family:'IBM Plex Mono', monospace; }
+  .risk-tag{
+    display:inline-block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    padding:1px 7px;
+    border-radius:2px;
+  }
+  .risk-tag.high{ background:var(--red-bg); color:var(--red); }
+  .risk-tag.medium{ background:var(--amber-bg); color:var(--amber); }
+  .risk-tag.low{ background:var(--green-bg); color:var(--green); }
+
+  .empty-good{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    padding:10px 0;
+  }
+
+  .table-wrap{ overflow-x:auto; }
+
+  footer{
+    margin-top:40px;
+    padding-top:14px;
+    border-top:1px solid var(--rule);
+    font-size:11.5px;
+    color:var(--ink-soft);
+  }
+
+  @media (max-width:560px){
+    header{flex-direction:column; align-items:flex-start;}
+    .file-no{text-align:left;}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header>
+    <div>
+      <h1>Consignment Ledger</h1>
+      <p>Upload a Meesho sub-order label / invoice PDF (any number of orders in one file). Every order is pulled out automatically and cross-checked for duplicate addresses, repeated names, and quantity or value outliers within the batch.</p>
+    </div>
+    <div class="file-no" id="fileNo">FILE — none loaded</div>
+  </header>
+
+  <div class="upload-block">
+    <div class="upload-row">
+      <input type="file" id="pdfInput" accept="application/pdf">
+      <button id="scanBtn" disabled>Scan orders</button>
+      <button id="csvBtn" class="secondary" style="display:none">Export CSV</button>
+    </div>
+    <div class="status" id="statusLine">Waiting for a PDF.</div>
+  </div>
+
+  <section class="results" id="results">
+
+    <div class="dash" id="dash"></div>
+
+    <h2 class="section-title">Flagged for manual review</h2>
+    <p class="note" id="flagNote"></p>
+    <div id="flagList"></div>
+
+    <h2 class="section-title">All orders in this file</h2>
+    <div class="table-wrap">
+      <table id="orderTable">
+        <thead>
+          <tr>
+            <th>Risk</th>
+            <th class="mono">Sub-order no.</th>
+            <th class="mono">SKU</th>
+            <th>Customer</th>
+            <th>City / State</th>
+            <th class="mono">PIN</th>
+            <th>Pay</th>
+            <th>Qty</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody id="orderRows"></tbody>
+      </table>
+    </div>
+
+  </section>
+
+  <footer>
+    Everything runs in your browser — the PDF never leaves this page. Detection is based only on patterns <em>within this file</em> (repeated names, addresses, PIN concentration, quantity/value outliers). It has no access to your Meesho account's delivery or RTO history, so a flag here means "worth a manual look," not a confirmed fake order.
+  </footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const pdfInput = document.getElementById('pdfInput');
+const scanBtn = document.getElementById('scanBtn');
+const csvBtn = document.getElementById('csvBtn');
+const statusLine = document.getElementById('statusLine');
+const fileNo = document.getElementById('fileNo');
+const resultsSection = document.getElementById('results');
+
+let currentFile = null;
+let lastOrders = [];
+
+pdfInput.addEventListener('change', () => {
+  currentFile = pdfInput.files[0] || null;
+  scanBtn.disabled = !currentFile;
+  if(currentFile){
+    fileNo.textContent = 'FILE — ' + currentFile.name;
+    statusLine.textContent = 'Ready. Click "Scan orders".';
+    statusLine.className = 'status';
+  }
+});
+
+scanBtn.addEventListener('click', async () => {
+  if(!currentFile) return;
+  scanBtn.disabled = true;
+  csvBtn.style.display = 'none';
+  resultsSection.classList.remove('show');
+  statusLine.className = 'status';
+  try{
+    statusLine.textContent = 'Reading PDF…';
+    const buf = await currentFile.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+
+    let fullText = '', leftText = '';
+    for(let i=1;i<=pdf.numPages;i++){
+      statusLine.textContent = `Extracting text — page ${i} of ${pdf.numPages}…`;
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const segs = pageSegments(content);
+      fullText += segmentsToText(segs) + '\n';
+      leftText += leftColumnText(segs, 200) + '\n';
+    }
+
+    statusLine.textContent = 'Parsing orders…';
+    const orders = parseOrders(fullText, leftText);
+
+    if(orders.length === 0){
+      statusLine.className = 'status err';
+      statusLine.textContent = 'No recognizable Meesho sub-order labels were found in this PDF. The layout may differ from the standard label/invoice format this tool expects.';
+      scanBtn.disabled = false;
+      return;
+    }
+
+    statusLine.textContent = 'Cross-checking for duplicates and outliers…';
+    analyzeOrders(orders);
+
+    lastOrders = orders;
+    renderResults(orders);
+    statusLine.textContent = `Done — ${orders.length} order${orders.length===1?'':'s'} found.`;
+    csvBtn.style.display = 'inline-block';
+  }catch(err){
+    console.error(err);
+    statusLine.className = 'status err';
+    statusLine.textContent = 'Could not process this PDF (' + err.message + '). Try a text-based export rather than a scanned image.';
+  }finally{
+    scanBtn.disabled = false;
+  }
+});
+
+csvBtn.addEventListener('click', () => {
+  if(!lastOrders.length) return;
+  const cols = ['subOrderNo','sku','size','qty','color','customerName','city','state','pin','payment','value','riskLevel','riskScore','reasons'];
+  const rows = [cols.join(',')];
+  lastOrders.forEach(o=>{
+    const row = cols.map(c=>{
+      let v = c==='reasons' ? (o.reasons||[]).join(' | ') : (o[c] ?? '');
+      v = String(v).replace(/"/g,'""');
+      return /[,"\n]/.test(v) ? `"${v}"` : v;
+    });
+    rows.push(row.join(','));
+  });
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'meesho_order_risk_scan.csv';
+  a.click();
+});
+
+// ---------- PDF text extraction, column- and line-aware ----------
+// Meesho label pages are two-column (customer address block on the left,
+// courier/barcode panel on the right) but pdf.js hands back text items with
+// no line breaks, so rows from both columns at similar heights merge into
+// one garbled line unless we split on large horizontal gaps first.
+function pageSegments(content){
+  const items = content.items.filter(it => it.str !== undefined && it.str.trim() !== '');
+  const rows = [];
+  items.forEach(it=>{
+    const y = Math.round(it.transform[5]);
+    const x = it.transform[4];
+    let row = rows.find(l => Math.abs(l.y - y) < 3);
+    if(!row){ row = {y, parts:[]}; rows.push(row); }
+    row.parts.push({x, w: it.width || 0, str: it.str});
+  });
+  const GAP = 55;
+  const segLines = [];
+  rows.forEach(row=>{
+    const parts = row.parts.slice().sort((a,b)=>a.x-b.x);
+    let current = [parts[0]];
+    const segs = [];
+    for(let i=1;i<parts.length;i++){
+      const prevEnd = current[current.length-1].x + current[current.length-1].w;
+      if(parts[i].x - prevEnd > GAP){ segs.push(current); current = [parts[i]]; }
+      else current.push(parts[i]);
+    }
+    segs.push(current);
+    segs.forEach(seg => segLines.push({y: row.y, x: seg[0].x, text: seg.map(p=>p.str).join(' ').replace(/\s+/g,' ').trim()}));
+  });
+  segLines.sort((a,b)=> b.y - a.y || a.x - b.x);
+  return segLines.filter(s=>s.text);
+}
+function segmentsToText(segs){ return segs.map(s=>s.text).join('\n'); }
+// isolate the left-hand customer-address column only, so courier/barcode
+// panel text never pollutes the name/address fields
+function leftColumnText(segs, threshold){ return segs.filter(s=>s.x < threshold).map(s=>s.text).join('\n'); }
+const COURIER_NOISE = /\b(Valmo|Xpress\s*Bees|Delhivery|Ecom\s*Express|Shadowfax|Ekart|DTDC|Bluedart|Blue\s*Dart|Pickup|Destination Code|Return Code)\b/gi;
+
+// ---------- Parsing ----------
+function parseOrders(fullText, leftText){
+  const rawChunks = fullText.split(/(?=Customer Address)/i);
+  const leftChunks = leftText.split(/(?=Customer Address)/i);
+  const sameCount = rawChunks.length === leftChunks.length;
+  const orders = [];
+  rawChunks.forEach((block, rawIdx) => {
+    if(!/Order No\.?[\s\S]*?\d{10,18}_\d+/.test(block)) return;
+    try{
+      const leftBlock = sameCount ? leftChunks[rawIdx] : null;
+      const o = parseBlock(block, leftBlock, orders.length);
+      if(o) orders.push(o);
+    }catch(e){ /* skip unparsable block */ }
+  });
+  // de-duplicate identical sub-order numbers (in case a label+invoice pair both matched)
+  const seen = new Map();
+  orders.forEach(o=>{
+    if(!seen.has(o.subOrderNo)) seen.set(o.subOrderNo, o);
+  });
+  return Array.from(seen.values());
+}
+
+function parseBlock(block, leftBlock, idx){
+  const nameSource = leftBlock || block;
+  const nameMatch = nameSource.match(/Customer Address\s*\n?\s*([^\n]+)/i);
+  const customerName = nameMatch ? nameMatch[1].trim() : '(unreadable)';
+
+  const addrEnd = nameSource.search(/If undelivered/i);
+  let addressLines = (addrEnd > -1 ? nameSource.slice(0, addrEnd) : nameSource.slice(0, 400)).split('\n').filter(Boolean);
+  addressLines = addressLines.filter(l => !/^Customer Address$/i.test(l.trim()));
+  if(addressLines.length && addressLines[0].trim() === customerName.trim()) addressLines.shift();
+  const address = addressLines.join(', ').replace(/\s*,\s*/g,', ').replace(COURIER_NOISE,'').replace(/\s{2,}/g,' ').replace(/,\s*,/g,',').trim();
+
+  const pinMatches = address.match(/\b\d{6}\b/g);
+  const pin = pinMatches ? pinMatches[pinMatches.length-1] : '';
+
+  const csMatch = address.match(/([A-Za-z.\s]+?),\s*([A-Za-z.\s]+?),?\s*\d{6}/);
+  const city = csMatch ? csMatch[1].trim() : '';
+  const state = csMatch ? csMatch[2].trim() : '';
+
+  let payment = 'Unknown';
+  if(/Prepaid\s*:/i.test(block)) payment = 'Prepaid';
+  else if(/COD\s*:|Check the payable amount/i.test(block)) payment = 'COD';
+
+  const orderNoHeaderIdx = block.search(/Order No\.?/i);
+  const subMatch = block.slice(orderNoHeaderIdx).match(/(\d{10,18}_\d+)/);
+  const subOrderNo = subMatch ? subMatch[1] : ('UNKNOWN-' + idx);
+  const rowEndIdx = orderNoHeaderIdx + (subMatch ? subMatch.index : 0);
+  let rowText = block.slice(orderNoHeaderIdx, rowEndIdx)
+                      .replace(/Order No\.?/i, '')
+                      .replace(/\n/g,' ')
+                      .replace(/\s+/g,' ')
+                      .trim();
+
+  let sku = rowText, size = '', qty = '', color = '';
+  const sizeMatch = rowText.match(/\b([A-Z]{2,5}-\d+(\.\d+)?|FREE\s*SIZE)\b/);
+  if(sizeMatch){
+    sku = rowText.slice(0, sizeMatch.index).trim().replace(/[-,]\s*$/,'').trim();
+    size = sizeMatch[1];
+    const rest = rowText.slice(sizeMatch.index + sizeMatch[0].length).trim();
+    const qtyMatch = rest.match(/^(\d+)\s*(.*)$/);
+    if(qtyMatch){ qty = qtyMatch[1]; color = qtyMatch[2].trim(); }
+  }
+
+  const totalMatch = block.match(/Total\s+Rs\.[\d,]*\.?\d*\s+Rs\.([\d,]+\.?\d*)/i);
+  const value = totalMatch ? parseFloat(totalMatch[1].replace(/,/g,'')) : null;
+
+  return {
+    idx, subOrderNo, sku: sku || '(unreadable)', size, qty: qty ? parseInt(qty,10) : null,
+    color, customerName, address, city, state, pin, payment, value,
+    riskScore:0, riskLevel:'low', reasons:[]
+  };
+}
+
+// ---------- Cross-order analysis ----------
+function normAddr(s){
+  return (s||'').toLowerCase()
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\b(near|road|rd|no|house|h|flat|fkat|number|apartment|apt|ward|dist|district|village|vill|po|ps|behind|opp|opposite|gali|street|st|colony|nagar|towards|main)\b/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function normName(s){ return (s||'').toLowerCase().replace(/[^a-z\s]/g,'').replace(/\s+/g,' ').trim(); }
+function tokenSet(s){ return new Set(normAddr(s).split(' ').filter(t=>t.length>1)); }
+function jaccard(a,b){
+  const A=tokenSet(a), B=tokenSet(b);
+  if(!A.size || !B.size) return 0;
+  let inter=0; A.forEach(t=>{ if(B.has(t)) inter++; });
+  const union = new Set([...A,...B]).size;
+  return inter/union;
+}
+
+function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function stdev(arr){ const m=mean(arr); return Math.sqrt(mean(arr.map(x=>(x-m)**2))); }
+
+function analyzeOrders(orders){
+  const n = orders.length;
+
+  // name repetition
+  const nameGroups = {};
+  orders.forEach(o=>{ const k=normName(o.customerName); (nameGroups[k] = nameGroups[k]||[]).push(o); });
+
+  // PIN concentration
+  const pinGroups = {};
+  orders.forEach(o=>{ if(o.pin){ (pinGroups[o.pin] = pinGroups[o.pin]||[]).push(o); } });
+
+  // value / qty stats (ignore nulls)
+  const values = orders.map(o=>o.value).filter(v=>v!=null);
+  const qtys = orders.map(o=>o.qty).filter(v=>v!=null);
+  const vMean = values.length ? mean(values) : 0, vStd = values.length ? stdev(values) : 0;
+  const qMean = qtys.length ? mean(qtys) : 0, qStd = qtys.length ? stdev(qtys) : 0;
+
+  // pairwise address similarity (same PIN required to reduce false positives, unless PIN missing)
+  const addrPairs = []; // {i,j,sim}
+  for(let i=0;i<n;i++){
+    for(let j=i+1;j<n;j++){
+      const a=orders[i], b=orders[j];
+      if(!a.address || !b.address) continue;
+      if(a.pin && b.pin && a.pin !== b.pin) continue;
+      const sim = jaccard(a.address, b.address);
+      if(sim >= 0.55) addrPairs.push({i,j,sim});
+    }
+  }
+
+  orders.forEach(o=>{
+    let score = 0; const reasons = [];
+
+    // duplicate/near-duplicate address with a different customer
+    const related = addrPairs.filter(p => p.i===o.idx || p.j===o.idx)
+                              .map(p => orders[p.i===o.idx ? p.j : p.i]);
+    const relatedDiffName = related.filter(r => normName(r.customerName) !== normName(o.customerName));
+    if(relatedDiffName.length){
+      score += 40;
+      reasons.push(`Address closely matches ${relatedDiffName.length} other order(s) under a different customer name (e.g. "${relatedDiffName[0].customerName}", order ${relatedDiffName[0].subOrderNo}).`);
+    }
+    const relatedSameName = related.filter(r => normName(r.customerName) === normName(o.customerName));
+    if(relatedSameName.length){
+      score += 15;
+      reasons.push(`Same address reused across ${relatedSameName.length + 1} orders from this customer.`);
+    }
+
+    // repeated customer name across different addresses
+    const sameName = (nameGroups[normName(o.customerName)] || []).filter(x => x.idx !== o.idx);
+    const sameNameDiffAddr = sameName.filter(x => jaccard(x.address, o.address) < 0.4);
+    if(sameNameDiffAddr.length){
+      score += 25;
+      reasons.push(`Same customer name appears with ${sameNameDiffAddr.length} different address(es) in this batch.`);
+    }
+
+    // PIN concentration
+    const pinPeers = (pinGroups[o.pin] || []).length;
+    if(pinPeers >= 3 && n >= 8 && pinPeers / n > 0.15){
+      score += 10;
+      reasons.push(`PIN code ${o.pin} accounts for ${pinPeers} of ${n} orders in this batch — unusually concentrated.`);
+    }
+
+    // quantity outlier
+    if(o.qty != null && qStd > 0 && (o.qty - qMean) / qStd > 2){
+      score += 10;
+      reasons.push(`Quantity (${o.qty}) is a statistical outlier versus the batch average (${qMean.toFixed(1)}).`);
+    } else if(o.qty != null && o.qty >= 4){
+      score += 8;
+      reasons.push(`Order quantity (${o.qty}) is notably high for a single sub-order.`);
+    }
+
+    // value outlier
+    if(o.value != null && vStd > 0 && Math.abs(o.value - vMean) / vStd > 2){
+      score += 8;
+      reasons.push(`Order value (₹${o.value}) is a statistical outlier versus the batch average (₹${vMean.toFixed(0)}).`);
+    }
+
+    // incomplete data
+    if(!o.pin || o.sku === '(unreadable)' || !o.customerName || o.customerName === '(unreadable)'){
+      reasons.push('Some fields could not be read cleanly from the PDF — treat this row as lower-confidence.');
+    }
+
+    score = Math.min(100, score);
+    o.riskScore = score;
+    o.riskLevel = score >= 50 ? 'high' : score >= 25 ? 'medium' : 'low';
+    o.reasons = reasons;
+  });
+}
+
+// ---------- Rendering ----------
+function renderResults(orders){
+  const n = orders.length;
+  const high = orders.filter(o=>o.riskLevel==='high');
+  const medium = orders.filter(o=>o.riskLevel==='medium');
+  const low = orders.filter(o=>o.riskLevel==='low');
+  const avgScore = mean(orders.map(o=>o.riskScore)).toFixed(1);
+
+  document.getElementById('dash').innerHTML = `
+    <div class="cell"><span class="num">${n}</span><span class="lbl">Total orders found</span></div>
+    <div class="cell hi"><span class="num">${high.length}</span><span class="lbl">High risk</span></div>
+    <div class="cell mid"><span class="num">${medium.length}</span><span class="lbl">Watchlist</span></div>
+    <div class="cell lo"><span class="num">${low.length}</span><span class="lbl">Normal</span></div>
+    <div class="cell"><span class="num">${avgScore}</span><span class="lbl">Avg. risk score /100</span></div>
+  `;
+
+  const flagList = document.getElementById('flagList');
+  const flagged = [...high, ...medium];
+  document.getElementById('flagNote').textContent = flagged.length
+    ? 'Ranked highest risk first. Reasons are based on patterns found only within this uploaded file.'
+    : '';
+  if(!flagged.length){
+    flagList.innerHTML = `<p class="empty-good">No orders in this batch show duplicate-address, repeated-identity, or outlier patterns strong enough to flag.</p>`;
+  }else{
+    flagged.sort((a,b)=>b.riskScore-a.riskScore);
+    flagList.innerHTML = flagged.map(o => `
+      <div class="flag-card ${o.riskLevel}">
+        <div class="flag-top">
+          <div><span class="stamp ${o.riskLevel}">${o.riskLevel==='high'?'High risk':'Watchlist'}</span><span class="subno">${o.subOrderNo}</span></div>
+          <span class="score">score ${o.riskScore}/100</span>
+        </div>
+        <div class="flag-meta"><b>SKU:</b> ${escapeHtml(o.sku)}${o.size ? ' · ' + escapeHtml(o.size) : ''}${o.color ? ' · ' + escapeHtml(o.color) : ''}</div>
+        <div class="flag-meta"><b>Customer:</b> ${escapeHtml(o.customerName)} — ${escapeHtml(o.city || '')}${o.state ? ', ' + escapeHtml(o.state) : ''} ${o.pin || ''}</div>
+        <ul class="reasons">${o.reasons.map(r=>`<li>${escapeHtml(r)}</li>`).join('')}</ul>
+      </div>
+    `).join('');
+  }
+
+  const rows = [...orders].sort((a,b)=>b.riskScore-a.riskScore);
+  document.getElementById('orderRows').innerHTML = rows.map(o => `
+    <tr>
+      <td><span class="risk-tag ${o.riskLevel}">${o.riskLevel}</span></td>
+      <td class="mono">${o.subOrderNo}</td>
+      <td class="mono">${escapeHtml(o.sku)}${o.size ? ' ('+escapeHtml(o.size)+')' : ''}</td>
+      <td>${escapeHtml(o.customerName)}</td>
+      <td>${escapeHtml(o.city || '—')}${o.state ? ', ' + escapeHtml(o.state) : ''}</td>
+      <td class="mono">${o.pin || '—'}</td>
+      <td>${o.payment}</td>
+      <td>${o.qty ?? '—'}</td>
+      <td>${o.value != null ? '₹'+o.value.toFixed(2) : '—'}</td>
+    </tr>
+  `).join('');
+
+  resultsSection.classList.add('show');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>

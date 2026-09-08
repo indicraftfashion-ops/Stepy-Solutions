@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Order Risk Scanner — Meesho Seller Tool</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F5F6FA;
+    --surface: #FFFFFF;
+    --surface-2: #FAFBFD;
+    --border: #E6E8F0;
+    --ink: #16192B;
+    --ink-soft: #6B7089;
+    --ink-faint: #9AA0B8;
+    --brand: #4338CA;
+    --brand-2: #6D5CE0;
+    --brand-soft: #EEECFC;
+    --danger: #DC2626;
+    --danger-soft: #FDEDED;
+    --amber: #B45309;
+    --amber-soft: #FFF4E0;
+    --green: #15803D;
+    --green-soft: #E9F7EE;
+    --info: #2563EB;
+    --info-soft: #E8EFFE;
+    --shadow: 0 1px 2px rgba(16,20,40,0.04), 0 8px 24px -12px rgba(16,20,40,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1100px 480px at 12% -10%, #EDEBFC 0%, rgba(237,235,252,0) 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Manrope', sans-serif;
+    font-size:15px;
+    line-height:1.55;
+    padding:0 0 70px;
+  }
+  .wrap{ max-width:1000px; margin:0 auto; padding:0 20px; }
+
+  .topbar{
+    padding:34px 0 26px;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    gap:20px; flex-wrap:wrap;
+  }
+  .brandmark{ display:flex; align-items:center; gap:12px; }
+  .brandmark .logo{
+    width:38px; height:38px; border-radius:11px;
+    background:linear-gradient(135deg, var(--brand), var(--brand-2));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 16px -4px rgba(67,56,202,0.45);
+    flex-shrink:0;
+  }
+  .brandmark .logo svg{ width:20px; height:20px; }
+  .brandmark h1{ font-size:19px; font-weight:800; margin:0; letter-spacing:-0.2px; }
+  .brandmark p{ margin:2px 0 0; font-size:12.5px; color:var(--ink-soft); font-weight:600; }
+  .badge-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--surface); border:1px solid var(--border);
+    padding:7px 13px; border-radius:100px;
+    font-size:12.5px; font-weight:600; color:var(--ink-soft);
+    box-shadow:var(--shadow);
+  }
+  .badge-pill .dot{ width:7px; height:7px; border-radius:50%; background:var(--green); }
+
+  .upload-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:18px;
+    padding:26px; box-shadow:var(--shadow); margin-bottom:26px;
+  }
+  .dropzone{
+    border:1.5px dashed #C9CCE3; border-radius:14px; background:var(--surface-2);
+    padding:28px 20px; text-align:center; transition:border-color .15s, background .15s; cursor:pointer;
+  }
+  .dropzone.drag{ border-color:var(--brand); background:var(--brand-soft); }
+  .dropzone .icon-circle{
+    width:46px; height:46px; border-radius:50%; background:var(--brand-soft); color:var(--brand);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 12px;
+  }
+  .dropzone h3{ margin:0 0 4px; font-size:15.5px; font-weight:700; }
+  .dropzone p{ margin:0; font-size:13px; color:var(--ink-soft); }
+  .dropzone input{ display:none; }
+  .filename-chip{
+    display:inline-flex; align-items:center; gap:8px; background:var(--brand-soft); color:var(--brand);
+    padding:6px 12px; border-radius:9px; font-size:12.5px; font-weight:700; margin-top:14px;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .actions-row{ display:flex; align-items:center; gap:12px; margin-top:18px; flex-wrap:wrap; }
+  button{
+    font-family:'Manrope', sans-serif; font-size:14px; font-weight:700; border:none; cursor:pointer;
+    padding:12px 22px; border-radius:11px;
+    background:linear-gradient(135deg, var(--brand), var(--brand-2)); color:#fff;
+    box-shadow:0 8px 20px -8px rgba(67,56,202,0.55);
+    transition:transform .1s, box-shadow .1s, opacity .1s;
+  }
+  button:hover:not(:disabled){ transform:translateY(-1px); }
+  button:disabled{ opacity:0.35; cursor:default; box-shadow:none; }
+  button.ghost{ background:transparent; color:var(--ink); border:1.5px solid var(--border); box-shadow:none; }
+  .status-line{ font-size:13px; color:var(--ink-soft); font-weight:600; display:flex; align-items:center; gap:8px; }
+  .status-line.err{ color:var(--danger); }
+  .spinner{
+    width:14px; height:14px; border-radius:50%; border:2px solid var(--brand-soft); border-top-color:var(--brand);
+    animation:spin .7s linear infinite; display:inline-block;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  section.results{ display:none; }
+  section.results.show{ display:block; }
+
+  .kpi-grid{ display:grid; grid-template-columns:repeat(5, 1fr); gap:14px; margin-bottom:30px; }
+  .kpi{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:16px 16px 14px; box-shadow:var(--shadow); position:relative; overflow:hidden;
+  }
+  .kpi::before{ content:""; position:absolute; top:0; left:0; right:0; height:3px; background:var(--kpi-accent, var(--brand)); }
+  .kpi .kpi-icon{
+    width:28px; height:28px; border-radius:9px; background:var(--kpi-soft, var(--brand-soft)); color:var(--kpi-accent, var(--brand));
+    display:flex; align-items:center; justify-content:center;
+  }
+  .kpi .kpi-icon svg{ width:15px; height:15px; }
+  .kpi .num{ font-size:25px; font-weight:800; letter-spacing:-0.5px; margin-top:12px; line-height:1; }
+  .kpi .lbl{ font-size:11.5px; color:var(--ink-soft); font-weight:700; margin-top:5px; }
+  .kpi.danger{ --kpi-accent:var(--danger); --kpi-soft:var(--danger-soft); }
+  .kpi.amber{ --kpi-accent:var(--amber); --kpi-soft:var(--amber-soft); }
+  .kpi.green{ --kpi-accent:var(--green); --kpi-soft:var(--green-soft); }
+  .kpi.info{ --kpi-accent:var(--info); --kpi-soft:var(--info-soft); }
+
+  .insight-grid{ display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:30px; }
+  .insight-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:18px 20px; box-shadow:var(--shadow);
+  }
+  .insight-card h4{ margin:0 0 3px; font-size:13.5px; font-weight:800; display:flex; align-items:center; gap:7px; }
+  .insight-card .sub-lbl{ font-size:11.5px; color:var(--ink-faint); font-weight:600; margin-bottom:12px; }
+  .insight-row{ display:flex; align-items:center; gap:10px; margin-bottom:9px; }
+  .insight-row .rank{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink-faint); font-weight:700; width:16px; flex-shrink:0; }
+  .insight-row .name{ font-size:13px; font-weight:700; flex-shrink:0; min-width:110px; }
+  .insight-row .bar-track{ flex:1; height:8px; border-radius:100px; background:var(--surface-2); overflow:hidden; }
+  .insight-row .bar-fill{ height:100%; border-radius:100px; background:linear-gradient(90deg, var(--brand), var(--brand-2)); }
+  .insight-row.danger .bar-fill{ background:linear-gradient(90deg, var(--danger), #F87171); }
+  .insight-row.info .bar-fill{ background:linear-gradient(90deg, var(--info), #60A5FA); }
+  .insight-row .count{ font-size:12px; font-weight:700; color:var(--ink-soft); width:60px; text-align:right; flex-shrink:0; }
+  .insight-empty{ font-size:12.5px; color:var(--ink-faint); }
+
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; margin:8px 0 16px; flex-wrap:wrap; gap:8px; }
+  .section-head h2{ font-size:18px; font-weight:800; margin:0; letter-spacing:-0.2px; }
+  .section-head .sub{ font-size:13px; color:var(--ink-soft); font-weight:600; }
+
+  .clean-state{ background:var(--green-soft); border:1px solid #BFE3CC; border-radius:16px; padding:26px; text-align:center; }
+  .clean-state .icon-circle{
+    width:46px; height:46px; border-radius:50%; background:#fff; color:var(--green);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 12px;
+    box-shadow:0 4px 10px -4px rgba(21,128,61,0.35);
+  }
+  .clean-state h3{ margin:0 0 4px; font-size:15.5px; font-weight:800; color:#0F5132; }
+  .clean-state p{ margin:0; font-size:13px; color:#3B6E52; }
+
+  .flag-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    box-shadow:var(--shadow); margin-bottom:16px; overflow:hidden; border-left:5px solid var(--danger);
+  }
+  .flag-card.medium{ border-left-color:var(--amber); }
+  .flag-card.exchange{ border-left-color:var(--info); }
+
+  .flag-head{ display:flex; align-items:center; gap:14px; padding:18px 20px 14px; flex-wrap:wrap; }
+  .rank-badge{
+    width:32px; height:32px; border-radius:10px; background:var(--danger-soft); color:var(--danger);
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13.5px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .flag-card.medium .rank-badge{ background:var(--amber-soft); color:var(--amber); }
+  .flag-card.exchange .rank-badge{ background:var(--info-soft); color:var(--info); }
+
+  .flag-titles{ flex:1; min-width:200px; }
+  .flag-titles .subno{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:15.5px; letter-spacing:0.2px; }
+  .flag-titles .sku{ font-size:13px; color:var(--ink-soft); font-weight:600; margin-top:2px; }
+
+  .level-chip{ padding:5px 12px; border-radius:100px; font-size:11.5px; font-weight:800; letter-spacing:0.2px; background:var(--danger-soft); color:var(--danger); white-space:nowrap; }
+  .flag-card.medium .level-chip{ background:var(--amber-soft); color:var(--amber); }
+  .flag-card.exchange .level-chip{ background:var(--info-soft); color:var(--info); }
+
+  .meter-wrap{ padding:0 20px 6px; }
+  .meter-track{ height:6px; border-radius:100px; background:#EEF0F6; overflow:hidden; }
+  .meter-fill{ height:100%; border-radius:100px; background:linear-gradient(90deg, var(--danger), #F87171); }
+  .flag-card.medium .meter-fill{ background:linear-gradient(90deg, var(--amber), #FBBF24); }
+  .meter-label{ display:flex; justify-content:space-between; font-size:11px; color:var(--ink-faint); font-weight:700; margin-top:5px; }
+  .signal-strength{ padding:0 20px 10px; display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-soft); font-weight:700; }
+  .signal-dot{ width:8px; height:8px; border-radius:50%; background:var(--amber); }
+  .signal-dot.strong{ background:var(--danger); }
+  .signal-dot.mild{ background:#CBD1E6; }
+
+  .flag-body{ padding:14px 20px 20px; }
+  .info-grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:10px 18px; margin-bottom:14px;
+    padding:14px; background:var(--surface-2); border-radius:12px; border:1px solid var(--border);
+  }
+  .info-grid .item .k{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-faint); font-weight:700; }
+  .info-grid .item .v{ font-size:13.5px; font-weight:700; margin-top:2px; }
+  .info-grid .item .v.mono{ font-family:'JetBrains Mono', monospace; font-weight:600; }
+
+  .why-label{ font-size:12px; font-weight:800; color:var(--ink); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .reasons{ margin:0; padding:0; list-style:none; }
+  .reasons li{ font-size:13.5px; padding:9px 0 9px 26px; position:relative; border-top:1px solid var(--border); color:#2A2E45; }
+  .reasons li:first-child{ border-top:none; }
+  .reasons li::before{
+    content:"!"; position:absolute; left:0; top:9px; width:17px; height:17px; border-radius:50%;
+    background:var(--danger-soft); color:var(--danger); font-size:11px; font-weight:800;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .flag-card.medium .reasons li::before{ background:var(--amber-soft); color:var(--amber); }
+  .flag-card.exchange .reasons li::before{ content:"i"; background:var(--info-soft); color:var(--info); }
+
+  .howto-card{
+    background:var(--info-soft); border:1px solid #C6D7FB; border-radius:16px;
+    padding:20px 22px; margin-bottom:18px;
+  }
+  .howto-card h3{ margin:0 0 4px; font-size:15px; font-weight:800; color:#1E3A8A; }
+  .howto-card p.lede{ margin:0 0 14px; font-size:13px; color:#3350A8; }
+  .howto-steps{ margin:0; padding:0; list-style:none; counter-reset:step; }
+  .howto-steps li{
+    counter-increment:step; position:relative; padding:8px 0 8px 34px; font-size:13.5px; color:#233A73;
+  }
+  .howto-steps li::before{
+    content:counter(step); position:absolute; left:0; top:7px; width:22px; height:22px; border-radius:7px;
+    background:#fff; color:var(--info); font-weight:800; font-size:12px;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(37,99,235,0.25);
+  }
+  .howto-note{ margin:12px 0 0; font-size:11.5px; color:#5470B8; }
+
+  footer{ margin-top:38px; padding-top:18px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-faint); line-height:1.6; }
+
+  .size-note-card{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:14px;
+    padding:14px 18px; font-size:12.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:16px;
+  }
+  .rule-manager{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:16px 18px; margin-bottom:20px; box-shadow:var(--shadow);
+  }
+  .rule-add-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .rule-add-row select{
+    font-family:'Manrope', sans-serif; font-size:13px; font-weight:600; color:var(--ink);
+    padding:9px 12px; border-radius:9px; border:1px solid var(--border); background:var(--surface-2);
+  }
+  .rule-add-row button{ padding:9px 16px; font-size:13px; }
+  .rule-chip-list{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .rule-chip{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--info-soft); color:var(--info); border-radius:100px;
+    padding:6px 8px 6px 14px; font-size:12.5px; font-weight:700;
+  }
+  .rule-chip button{
+    background:#fff; color:var(--info); border:none; width:20px; height:20px; border-radius:50%;
+    font-size:12px; font-weight:800; padding:0; line-height:1; box-shadow:none; cursor:pointer;
+  }
+  .suggest-card{
+    background:var(--surface); border:1px solid var(--border); border-left:5px solid var(--info);
+    border-radius:14px; padding:14px 18px; margin-bottom:10px; box-shadow:var(--shadow);
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  }
+  .suggest-left .subno{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14px; }
+  .suggest-left .meta{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+  .suggest-sizes{ display:flex; align-items:center; gap:10px; font-size:13.5px; font-weight:700; }
+  .suggest-sizes .arrow{ color:var(--ink-faint); }
+  .suggest-sizes .old{ color:var(--ink-soft); text-decoration:line-through; font-weight:600; }
+  .suggest-sizes .new{ color:var(--info); background:var(--info-soft); padding:3px 10px; border-radius:8px; }
+  #stateSizeTable th, #stateSizeTable td{ font-size:12px; }
+
+  .toggle-all{ text-align:center; margin-top:22px; display:flex; justify-content:center; gap:14px; align-items:center; flex-wrap:wrap; }
+  .toggle-all button{ font-size:13px; padding:10px 18px; }
+  .checkbox-row{ display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-soft); font-weight:600; }
+  #allOrdersBlock{ display:none; margin-top:16px; }
+  #allOrdersBlock.show{ display:block; }
+  .mini-table-wrap{ overflow-x:auto; background:var(--surface); border:1px solid var(--border); border-radius:14px; }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table th, table td{ padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); }
+  table th{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.4px; color:var(--ink-faint); font-weight:800; }
+  table td.mono{ font-family:'JetBrains Mono', monospace; font-size:12px; }
+  .risk-tag{ display:inline-block; padding:2px 9px; border-radius:100px; font-size:10.5px; font-weight:800; }
+  .risk-tag.high{ background:var(--danger-soft); color:var(--danger); }
+  .risk-tag.medium{ background:var(--amber-soft); color:var(--amber); }
+  .risk-tag.low{ background:var(--green-soft); color:var(--green); }
+  .type-tag{ display:inline-block; padding:2px 8px; border-radius:100px; font-size:10px; font-weight:800; background:var(--info-soft); color:var(--info); margin-left:5px; }
+
+  @media (max-width:760px){ .kpi-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:640px){ .topbar{ flex-direction:column; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brandmark">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L3 6.5V12C3 16.97 6.84 21.61 12 23C17.16 21.61 21 16.97 21 12V6.5L12 2Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12L11 14L15.5 9.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>Order Risk Scanner</h1>
+        <p>Meesho seller tool · runs fully in your browser</p>
+      </div>
+    </div>
+    <div class="badge-pill"><span class="dot"></span> Your PDF never leaves this page</div>
+  </div>
+
+  <div class="upload-card">
+    <div class="dropzone" id="dropzone">
+      <div class="icon-circle">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 15V3M12 3L7 8M12 3L17 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15V17C4 18.66 5.34 20 7 20H17C18.66 20 20 18.66 20 17V15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h3>Upload sub-order label / invoice PDF</h3>
+      <p>Drag &amp; drop, or click to browse — one file can contain any number of orders</p>
+      <input type="file" id="pdfInput" accept="application/pdf">
+      <div id="fileChip"></div>
+    </div>
+    <div class="actions-row">
+      <button id="scanBtn" disabled>Scan orders</button>
+      <button id="csvBtn" class="ghost" style="display:none">Export full CSV</button>
+      <span class="status-line" id="statusLine">Waiting for a PDF.</span>
+    </div>
+  </div>
+
+  <section class="results" id="results">
+
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <div class="section-head">
+      <h2>State-wise insights</h2>
+      <span class="sub">Straight from this uploaded batch — no assumptions added</span>
+    </div>
+    <div class="insight-grid" id="insightGrid"></div>
+
+    <div class="section-head">
+      <h2>Fraud &amp; duplicate-risk orders</h2>
+      <span class="sub" id="flagSub"></span>
+    </div>
+    <div id="flagList"></div>
+
+    <div class="section-head" id="exchangeHead" style="display:none">
+      <h2>Exchange orders — no extra profit</h2>
+      <span class="sub" id="exchangeSub"></span>
+    </div>
+    <div id="exchangeBlock" style="display:none">
+      <div class="howto-card">
+        <h3>Why flag these</h3>
+        <p class="lede">An exchange replaces the item at no additional charge — you re-ship a product for the same original order value, so there's no incremental profit and you absorb the extra shipping/packing cost. Cancelling ones you can't fulfil profitably is often the better call.</p>
+        <h3>Exact panel path to cancel/reject an exchange</h3>
+        <ol class="howto-steps">
+          <li><strong>If the exchange hasn't been accepted/packed yet:</strong> Supplier Panel → <strong>Orders → Confirm &amp; Pack</strong> tab → find the sub-order number → click <strong>"Reject Item"</strong> → pick a reason from the dropdown (e.g. "Not fulfillable") → click <strong>"Confirm Cancellation"</strong>.</li>
+          <li><strong>If it already shows as a return/exchange request:</strong> go to the <strong>Returns</strong> tab → open the matching sub-order → you'll see <strong>Approve</strong> / <strong>Reject</strong> — choose Reject and enter the reason (this gets shown to the customer automatically).</li>
+          <li><strong>If neither option is available for that order's current status:</strong> go to <strong>Support</strong> (left sidebar) → <strong>Help</strong> tab → category <strong>"Returns/RTO &amp; Exchange"</strong> → select the closest matching issue (e.g. "I want to cancel/reject a return or exchange") → submit with the sub-order number in the description. Track it under the <strong>"My Tickets"</strong> tab.</li>
+          <li>Use this selectively — frequent cancellations can affect your seller rating, so reject only exchanges that would genuinely run at a loss.</li>
+        </ol>
+        <p class="howto-note">These tab names are current as of Meesho's own seller Learning Hub, but panels get updated — if wording doesn't match exactly, use the Help tab's search to find the closest option.</p>
+      </div>
+      <div id="exchangeList"></div>
+    </div>
+
+    <div class="section-head">
+      <h2>Size suggestions by state</h2>
+      <span class="sub">Based only on your own saved returns experience — nothing here is assumed for you</span>
+    </div>
+    <div class="size-note-card">
+      There's no verified public dataset mapping Indian states to exact shoe/clothing size differences — the CSIR-CLRI national foot survey confirmed regional variation exists, but the size-conversion numbers aren't public yet. So instead of guessing, this tool lets <strong>you</strong> save the size adjustment you've learned from your own return patterns per state, and it will remember it (in your browser) and apply it to every scan from now on.
+    </div>
+    <div class="rule-manager">
+      <div class="rule-add-row">
+        <select id="ruleState"><option value="">Select state…</option></select>
+        <select id="ruleDelta">
+          <option value="-2">Suggest 2 sizes smaller</option>
+          <option value="-1">Suggest 1 size smaller</option>
+          <option value="1">Suggest 1 size bigger</option>
+          <option value="2">Suggest 2 sizes bigger</option>
+        </select>
+        <button id="saveRuleBtn" class="ghost">Save rule</button>
+      </div>
+      <div id="ruleListWrap"></div>
+    </div>
+    <div id="sizeSuggestBlock"></div>
+    <div class="section-head" style="margin-top:22px">
+      <h2>Orders by state &amp; size (this batch)</h2>
+      <span class="sub">Purely a count from this file — use it to spot your own patterns</span>
+    </div>
+    <div class="mini-table-wrap" style="margin-bottom:10px">
+      <table id="stateSizeTable"></table>
+    </div>
+
+    <div class="toggle-all">
+      <button class="ghost" id="toggleAllBtn">Show all orders (reference)</button>
+      <label class="checkbox-row"><input type="checkbox" id="issuesOnly"> Show only issues in table</label>
+    </div>
+    <div id="allOrdersBlock">
+      <div class="mini-table-wrap">
+        <table>
+          <thead><tr><th>Risk</th><th>Sub-order no.</th><th>SKU</th><th>Customer</th><th>City/State</th><th>PIN</th><th>Pay</th><th>Qty</th><th>Value</th></tr></thead>
+          <tbody id="orderRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
+  <footer>
+    Detection is based only on patterns found <strong>within this uploaded file</strong> — duplicate or reused addresses, repeated customer identities, PIN-code concentration, quantity/value outliers, and exchange labelling. This tool has no access to your Meesho account's actual delivery or RTO history, so a flag here means <em>"worth a manual check,"</em> not a confirmed fraud.
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const pdfInput = document.getElementById('pdfInput');
+const dropzone = document.getElementById('dropzone');
+const fileChip = document.getElementById('fileChip');
+const scanBtn = document.getElementById('scanBtn');
+const csvBtn = document.getElementById('csvBtn');
+const statusLine = document.getElementById('statusLine');
+const resultsSection = document.getElementById('results');
+const toggleAllBtn = document.getElementById('toggleAllBtn');
+const allOrdersBlock = document.getElementById('allOrdersBlock');
+const ruleStateSel = document.getElementById('ruleState');
+const ruleDeltaSel = document.getElementById('ruleDelta');
+const saveRuleBtn = document.getElementById('saveRuleBtn');
+
+let stateRules = {}; // { "Rajasthan": -1, "Punjab": 1, ... } — set only by the seller, never assumed
+
+async function loadStateRules(){
+  try{
+    const res = await window.storage.get('state-size-rules', false);
+    stateRules = res && res.value ? JSON.parse(res.value) : {};
+  }catch(e){ stateRules = {}; }
+}
+async function persistStateRules(){
+  try{ await window.storage.set('state-size-rules', JSON.stringify(stateRules), false); }
+  catch(e){ /* storage unavailable — rules stay in-memory for this session only */ }
+}
+
+saveRuleBtn.addEventListener('click', async () => {
+  const st = ruleStateSel.value;
+  const delta = parseInt(ruleDeltaSel.value, 10);
+  if(!st) return;
+  stateRules[st] = delta;
+  await persistStateRules();
+  renderRuleList();
+  if(lastOrders.length) renderSizeSuggestions(lastOrders);
+});
+
+function renderRuleList(){
+  const wrap = document.getElementById('ruleListWrap');
+  const entries = Object.entries(stateRules);
+  if(!entries.length){ wrap.innerHTML = `<p style="font-size:12.5px;color:var(--ink-faint);margin:12px 0 0;">No rules saved yet — add one above based on what you've noticed in returns from a particular state.</p>`; return; }
+  wrap.innerHTML = `<div class="rule-chip-list">` + entries.map(([st,d]) => `
+    <span class="rule-chip">${escapeHtml(st)}: ${d>0?'+':''}${d} size${Math.abs(d)>1?'s':''} <button data-state="${escapeHtml(st)}" class="rule-del">×</button></span>
+  `).join('') + `</div>`;
+  wrap.querySelectorAll('.rule-del').forEach(btn => btn.addEventListener('click', async (e) => {
+    delete stateRules[e.target.dataset.state];
+    await persistStateRules();
+    renderRuleList();
+    if(lastOrders.length) renderSizeSuggestions(lastOrders);
+  }));
+}
+
+function parseSizeCode(sizeStr){
+  const m = (sizeStr||'').match(/^([A-Za-z]+)-(\d+(?:\.\d+)?)$/);
+  if(!m) return null;
+  return { prefix: m[1], num: parseFloat(m[2]) };
+}
+function shiftSize(sizeStr, delta){
+  const p = parseSizeCode(sizeStr);
+  if(!p) return null;
+  const newNum = p.num + delta;
+  if(newNum <= 0) return null;
+  return `${p.prefix}-${Number.isInteger(newNum) ? newNum : newNum.toFixed(1)}`;
+}
+
+function renderSizeSuggestions(orders){
+  const block = document.getElementById('sizeSuggestBlock');
+  const suggestions = orders
+    .filter(o => o.state && stateRules[o.state] && stateRules[o.state] !== 0 && o.orderType !== 'Exchange')
+    .map(o => ({ o, delta: stateRules[o.state], suggested: shiftSize(o.size, stateRules[o.state]) }))
+    .filter(s => s.suggested);
+
+  if(!suggestions.length){
+    block.innerHTML = `<p style="font-size:13px;color:var(--ink-faint);">No suggestions to show yet — either no state rules are saved, or none of this batch's orders are from a state you've added a rule for.</p>`;
+    return;
+  }
+  block.innerHTML = suggestions.map(s => `
+    <div class="suggest-card">
+      <div class="suggest-left">
+        <div class="subno">${s.o.subOrderNo}</div>
+        <div class="meta">${escapeHtml(s.o.sku)} · ${escapeHtml(s.o.customerName)} · ${escapeHtml(s.o.state)}${s.o.state ? '' : ''}</div>
+      </div>
+      <div class="suggest-sizes">
+        <span class="old">${escapeHtml(s.o.size)}</span>
+        <span class="arrow">→</span>
+        <span class="new">${escapeHtml(s.suggested)} suggested</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderStateSizeTable(orders){
+  const withData = orders.filter(o => o.state && o.size);
+  const states = [...new Set(withData.map(o=>o.state))].sort();
+  const sizes = [...new Set(withData.map(o=>o.size))].sort();
+  if(!states.length || !sizes.length){
+    document.getElementById('stateSizeTable').innerHTML = `<tr><td style="padding:14px;color:var(--ink-faint);">Not enough state/size data in this batch to build a table.</td></tr>`;
+    return;
+  }
+  let html = '<thead><tr><th>State</th>' + sizes.map(sz=>`<th>${escapeHtml(sz)}</th>`).join('') + '<th>Total</th></tr></thead><tbody>';
+  states.forEach(st=>{
+    const rowOrders = withData.filter(o=>o.state===st);
+    html += `<tr><td>${escapeHtml(st)}</td>` + sizes.map(sz => `<td>${rowOrders.filter(o=>o.size===sz).length || '—'}</td>`).join('') + `<td><strong>${rowOrders.length}</strong></td></tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('stateSizeTable').innerHTML = html;
+}
+
+function renderStateInsights(orders){
+  const withState = orders.filter(o=>o.state);
+  const grid = document.getElementById('insightGrid');
+  if(!withState.length){
+    grid.innerHTML = `<div class="insight-card"><p class="insight-empty">No readable state data in this batch.</p></div>`;
+    return;
+  }
+
+  // 1. top ordering states
+  const byState = {};
+  withState.forEach(o=>{ (byState[o.state] = byState[o.state]||[]).push(o); });
+  const topStates = Object.entries(byState).sort((a,b)=>b[1].length-a[1].length).slice(0,6);
+  const maxCount = topStates.length ? topStates[0][1].length : 1;
+
+  // 2. preferred (most-ordered) size per state
+  const preferredRows = Object.entries(byState).map(([st, list])=>{
+    const sizeCounts = {};
+    list.forEach(o=>{ if(o.size) sizeCounts[o.size] = (sizeCounts[o.size]||0)+1; });
+    const entries = Object.entries(sizeCounts).sort((a,b)=>b[1]-a[1]);
+    return entries.length ? { state: st, size: entries[0][0], count: entries[0][1], total: list.length } : null;
+  }).filter(Boolean).sort((a,b)=>b.total-a.total).slice(0,6);
+
+  // 3. states with most exchange orders
+  const exByState = {};
+  orders.filter(o=>o.orderType==='Exchange' && o.state).forEach(o=>{ exByState[o.state] = (exByState[o.state]||0)+1; });
+  const topExchange = Object.entries(exByState).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxEx = topExchange.length ? topExchange[0][1] : 1;
+
+  // 4. states with most fake/watchlist orders
+  const fakeByState = {};
+  orders.filter(o=>o.riskLevel!=='low' && o.state).forEach(o=>{ fakeByState[o.state] = (fakeByState[o.state]||0)+1; });
+  const topFake = Object.entries(fakeByState).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxFake = topFake.length ? topFake[0][1] : 1;
+
+  function rows(list, max, cls){
+    return list.map(([name,count],i)=>`
+      <div class="insight-row ${cls}">
+        <span class="rank">#${i+1}</span>
+        <span class="name">${escapeHtml(name)}</span>
+        <span class="bar-track"><span class="bar-fill" style="width:${Math.max(6,(count/max)*100)}%"></span></span>
+        <span class="count">${count} order${count===1?'':'s'}</span>
+      </div>`).join('');
+  }
+
+  grid.innerHTML = `
+    <div class="insight-card">
+      <h4>📦 Top ordering states</h4>
+      <div class="sub-lbl">Where most of your orders are coming from</div>
+      ${topStates.length ? rows(topStates.map(([s,l])=>[s,l.length]), maxCount, '') : '<p class="insight-empty">No data.</p>'}
+    </div>
+    <div class="insight-card">
+      <h4>📏 Preferred size by state</h4>
+      <div class="sub-lbl">Most-ordered size in each state this batch</div>
+      ${preferredRows.length ? preferredRows.map((r,i)=>`
+        <div class="insight-row">
+          <span class="rank">#${i+1}</span>
+          <span class="name">${escapeHtml(r.state)}</span>
+          <span class="bar-track"><span class="bar-fill" style="width:${Math.max(6,(r.count/r.total)*100)}%"></span></span>
+          <span class="count">${escapeHtml(r.size)} (${r.count}/${r.total})</span>
+        </div>`).join('') : '<p class="insight-empty">No size data.</p>'}
+    </div>
+    <div class="insight-card">
+      <h4>🔁 Most exchange orders by state</h4>
+      <div class="sub-lbl">No added profit on these — see section below</div>
+      ${topExchange.length ? rows(topExchange, maxEx, 'info') : '<p class="insight-empty">No exchange orders in this batch.</p>'}
+    </div>
+    <div class="insight-card">
+      <h4>🚩 Most fake/watchlist orders by state</h4>
+      <div class="sub-lbl">States contributing most flagged orders</div>
+      ${topFake.length ? rows(topFake, maxFake, 'danger') : '<p class="insight-empty">No flagged orders in this batch.</p>'}
+    </div>
+  `;
+}
+
+function populateStateDropdown(orders){
+  const states = [...new Set(orders.map(o=>o.state).filter(Boolean))].sort();
+  ruleStateSel.innerHTML = '<option value="">Select state…</option>' + states.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+}
+
+loadStateRules().then(renderRuleList);
+const issuesOnly = document.getElementById('issuesOnly');
+
+let currentFile = null;
+let lastOrders = [];
+
+dropzone.addEventListener('click', () => pdfInput.click());
+['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+dropzone.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if(f && f.type === 'application/pdf'){ setFile(f); }
+});
+pdfInput.addEventListener('change', () => { if(pdfInput.files[0]) setFile(pdfInput.files[0]); });
+
+function setFile(f){
+  currentFile = f;
+  scanBtn.disabled = false;
+  fileChip.innerHTML = `<span class="filename-chip">📄 ${escapeHtml(f.name)}</span>`;
+  statusLine.textContent = 'Ready. Click "Scan orders".';
+  statusLine.className = 'status-line';
+}
+
+toggleAllBtn.addEventListener('click', () => {
+  allOrdersBlock.classList.toggle('show');
+  toggleAllBtn.textContent = allOrdersBlock.classList.contains('show') ? 'Hide all orders' : 'Show all orders (reference)';
+});
+issuesOnly.addEventListener('change', () => renderTable(lastOrders));
+
+scanBtn.addEventListener('click', async () => {
+  if(!currentFile) return;
+  scanBtn.disabled = true;
+  csvBtn.style.display = 'none';
+  resultsSection.classList.remove('show');
+  statusLine.className = 'status-line';
+  try{
+    statusLine.innerHTML = '<span class="spinner"></span> Reading PDF…';
+    const buf = await currentFile.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+
+    let fullText = '', leftText = '';
+    for(let i=1;i<=pdf.numPages;i++){
+      statusLine.innerHTML = `<span class="spinner"></span> Extracting text — page ${i} of ${pdf.numPages}…`;
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const segs = pageSegments(content);
+      fullText += segmentsToText(segs) + '\n';
+      leftText += leftColumnText(segs, 200) + '\n';
+    }
+
+    statusLine.innerHTML = '<span class="spinner"></span> Parsing orders…';
+    const orders = parseOrders(fullText, leftText);
+
+    if(orders.length === 0){
+      statusLine.className = 'status-line err';
+      statusLine.textContent = 'No recognizable Meesho sub-order labels were found in this PDF.';
+      scanBtn.disabled = false;
+      return;
+    }
+
+    statusLine.innerHTML = '<span class="spinner"></span> Cross-checking for duplicates and outliers…';
+    analyzeOrders(orders);
+
+    lastOrders = orders;
+    renderResults(orders);
+    statusLine.textContent = `Done — ${orders.length} order${orders.length===1?'':'s'} scanned.`;
+    csvBtn.style.display = 'inline-block';
+  }catch(err){
+    console.error(err);
+    statusLine.className = 'status-line err';
+    statusLine.textContent = 'Could not process this PDF (' + err.message + ').';
+  }finally{
+    scanBtn.disabled = false;
+  }
+});
+
+csvBtn.addEventListener('click', () => {
+  if(!lastOrders.length) return;
+  const cols = ['subOrderNo','sku','size','qty','color','customerName','city','state','pin','payment','orderType','value','riskLevel','riskScore','reasons'];
+  const rows = [cols.join(',')];
+  lastOrders.forEach(o=>{
+    const row = cols.map(c=>{
+      let v = c==='reasons' ? (o.reasons||[]).join(' | ') : (o[c] ?? '');
+      v = String(v).replace(/"/g,'""');
+      return /[,"\n]/.test(v) ? `"${v}"` : v;
+    });
+    rows.push(row.join(','));
+  });
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'meesho_order_risk_scan.csv';
+  a.click();
+});
+
+// ---------- PDF text extraction, column- and line-aware ----------
+// Meesho label pages are two-column (customer address block on the left,
+// courier/barcode panel on the right) but pdf.js hands back text items with
+// no line breaks, so rows from both columns at similar heights merge into
+// one garbled line unless we split on large horizontal gaps first.
+function pageSegments(content){
+  const items = content.items.filter(it => it.str !== undefined && it.str.trim() !== '');
+  const rows = [];
+  items.forEach(it=>{
+    const y = Math.round(it.transform[5]);
+    const x = it.transform[4];
+    let row = rows.find(l => Math.abs(l.y - y) < 3);
+    if(!row){ row = {y, parts:[]}; rows.push(row); }
+    row.parts.push({x, w: it.width || 0, str: it.str});
+  });
+  const GAP = 55;
+  const segLines = [];
+  rows.forEach(row=>{
+    const parts = row.parts.slice().sort((a,b)=>a.x-b.x);
+    let current = [parts[0]];
+    const segs = [];
+    for(let i=1;i<parts.length;i++){
+      const prevEnd = current[current.length-1].x + current[current.length-1].w;
+      if(parts[i].x - prevEnd > GAP){ segs.push(current); current = [parts[i]]; }
+      else current.push(parts[i]);
+    }
+    segs.push(current);
+    segs.forEach(seg => segLines.push({y: row.y, x: seg[0].x, text: seg.map(p=>p.str).join(' ').replace(/\s+/g,' ').trim()}));
+  });
+  segLines.sort((a,b)=> b.y - a.y || a.x - b.x);
+  return segLines.filter(s=>s.text);
+}
+function segmentsToText(segs){ return segs.map(s=>s.text).join('\n'); }
+// isolate the left-hand customer-address column only, so courier/barcode
+// panel text never pollutes the name/address fields
+function leftColumnText(segs, threshold){ return segs.filter(s=>s.x < threshold).map(s=>s.text).join('\n'); }
+const COURIER_NOISE = /\b(Valmo|Xpress\s*Bees|Delhivery|Ecom\s*Express|Shadowfax|Ekart|DTDC|Bluedart|Blue\s*Dart|Pickup|Destination Code|Return Code)\b/gi;
+
+// ---------- Parsing ----------
+function parseOrders(fullText, leftText){
+  const rawChunks = fullText.split(/(?=Customer Address)/i);
+  const leftChunks = leftText.split(/(?=Customer Address)/i);
+  const sameCount = rawChunks.length === leftChunks.length;
+  const orders = [];
+  rawChunks.forEach((block, rawIdx) => {
+    if(!/Order No\.?[\s\S]*?\d{10,18}_\d+/.test(block)) return;
+    try{
+      const leftBlock = sameCount ? leftChunks[rawIdx] : null;
+      const o = parseBlock(block, leftBlock, orders.length);
+      if(o) orders.push(o);
+    }catch(e){ /* skip unparsable block */ }
+  });
+  const seen = new Map();
+  orders.forEach(o=>{ if(!seen.has(o.subOrderNo)) seen.set(o.subOrderNo, o); });
+  return Array.from(seen.values());
+}
+
+function parseBlock(block, leftBlock, idx){
+  const nameSource = leftBlock || block;
+  const nameMatch = nameSource.match(/Customer Address\s*\n?\s*([^\n]+)/i);
+  const customerName = nameMatch ? nameMatch[1].trim() : '(unreadable)';
+
+  const addrEnd = nameSource.search(/If undelivered/i);
+  let addressLines = (addrEnd > -1 ? nameSource.slice(0, addrEnd) : nameSource.slice(0, 400)).split('\n').filter(Boolean);
+  addressLines = addressLines.filter(l => !/^Customer Address$/i.test(l.trim()));
+  if(addressLines.length && addressLines[0].trim() === customerName.trim()) addressLines.shift();
+  const address = addressLines.join(', ').replace(/\s*,\s*/g,', ').replace(COURIER_NOISE,'').replace(/\s{2,}/g,' ').replace(/,\s*,/g,',').trim();
+
+  const pinMatches = address.match(/\b\d{6}\b/g);
+  const pin = pinMatches ? pinMatches[pinMatches.length-1] : '';
+
+  const csMatch = address.match(/([A-Za-z.\s]+?),\s*([A-Za-z.\s]+?),?\s*\d{6}/);
+  const city = csMatch ? csMatch[1].trim() : '';
+  const state = csMatch ? csMatch[2].trim() : '';
+
+  let payment = 'Unknown';
+  if(/Prepaid\s*:/i.test(block)) payment = 'Prepaid';
+  else if(/COD\s*:|Check the payable amount/i.test(block)) payment = 'COD';
+
+  const orderType = /\bExchange\b/i.test(block) ? 'Exchange' : 'Regular';
+
+  const orderNoHeaderIdx = block.search(/Order No\.?/i);
+  const subMatch = block.slice(orderNoHeaderIdx).match(/(\d{10,18}_\d+)/);
+  const subOrderNo = subMatch ? subMatch[1] : ('UNKNOWN-' + idx);
+  const rowEndIdx = orderNoHeaderIdx + (subMatch ? subMatch.index : 0);
+  let rowText = block.slice(orderNoHeaderIdx, rowEndIdx)
+                      .replace(/Order No\.?/i, '')
+                      .replace(/\n/g,' ')
+                      .replace(/\s+/g,' ')
+                      .trim();
+
+  let sku = rowText, size = '', qty = '', color = '';
+  const sizeMatch = rowText.match(/\b([A-Z]{2,5}-\d+(\.\d+)?|FREE\s*SIZE)\b/);
+  if(sizeMatch){
+    sku = rowText.slice(0, sizeMatch.index).trim().replace(/[-,]\s*$/,'').trim();
+    size = sizeMatch[1];
+    const rest = rowText.slice(sizeMatch.index + sizeMatch[0].length).trim();
+    const qtyMatch = rest.match(/^(\d+)\s*(.*)$/);
+    if(qtyMatch){ qty = qtyMatch[1]; color = qtyMatch[2].trim(); }
+  }
+
+  const totalMatch = block.match(/Total\s+Rs\.[\d,]*\.?\d*\s+Rs\.([\d,]+\.?\d*)/i);
+  const value = totalMatch ? parseFloat(totalMatch[1].replace(/,/g,'')) : null;
+
+  return {
+    idx, subOrderNo, sku: sku || '(unreadable)', size, qty: qty ? parseInt(qty,10) : null,
+    color, customerName, address, city, state, pin, payment, orderType, value,
+    riskScore:0, riskLevel:'low', reasons:[]
+  };
+}
+
+// ---------- Cross-order analysis ----------
+function normAddr(s){
+  return (s||'').toLowerCase()
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\b(near|road|rd|no|house|h|flat|fkat|number|apartment|apt|ward|dist|district|village|vill|po|ps|behind|opp|opposite|gali|street|st|colony|nagar|towards|main)\b/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function normName(s){ return (s||'').toLowerCase().replace(/[^a-z\s]/g,'').replace(/\s+/g,' ').trim(); }
+function tokenSet(s){ return new Set(normAddr(s).split(' ').filter(t=>t.length>1)); }
+function jaccard(a,b){
+  const A=tokenSet(a), B=tokenSet(b);
+  if(!A.size || !B.size) return 0;
+  let inter=0; A.forEach(t=>{ if(B.has(t)) inter++; });
+  const union = new Set([...A,...B]).size;
+  return inter/union;
+}
+function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function stdev(arr){ const m=mean(arr); return Math.sqrt(mean(arr.map(x=>(x-m)**2))); }
+
+function analyzeOrders(orders){
+  const n = orders.length;
+  const nameGroups = {};
+  orders.forEach(o=>{ const k=normName(o.customerName); (nameGroups[k] = nameGroups[k]||[]).push(o); });
+  const pinGroups = {};
+  orders.forEach(o=>{ if(o.pin){ (pinGroups[o.pin] = pinGroups[o.pin]||[]).push(o); } });
+
+  const values = orders.map(o=>o.value).filter(v=>v!=null);
+  const qtys = orders.map(o=>o.qty).filter(v=>v!=null);
+  const vMean = values.length ? mean(values) : 0, vStd = values.length ? stdev(values) : 0;
+  const qMean = qtys.length ? mean(qtys) : 0, qStd = qtys.length ? stdev(qtys) : 0;
+
+  const addrPairs = [];
+  for(let i=0;i<n;i++){
+    for(let j=i+1;j<n;j++){
+      const a=orders[i], b=orders[j];
+      if(!a.address || !b.address) continue;
+      if(a.pin && b.pin && a.pin !== b.pin) continue;
+      const sim = jaccard(a.address, b.address);
+      if(sim >= 0.55) addrPairs.push({i,j,sim});
+    }
+  }
+
+  orders.forEach(o=>{
+    let score = 0; const reasons = [];
+
+    const related = addrPairs.filter(p => p.i===o.idx || p.j===o.idx)
+                              .map(p => orders[p.i===o.idx ? p.j : p.i]);
+    const relatedDiffName = related.filter(r => normName(r.customerName) !== normName(o.customerName));
+    if(relatedDiffName.length){
+      score += 40;
+      reasons.push(`Same delivery address is reused under a different customer name in ${relatedDiffName.length} other order(s) — e.g. "${relatedDiffName[0].customerName}" (order ${relatedDiffName[0].subOrderNo}). This is a classic sign of one person placing multiple orders under fake names.`);
+    }
+    const relatedSameName = related.filter(r => normName(r.customerName) === normName(o.customerName));
+    if(relatedSameName.length){
+      score += 15;
+      reasons.push(`Same customer + same address repeated across ${relatedSameName.length + 1} orders in this batch.`);
+    }
+
+    const sameName = (nameGroups[normName(o.customerName)] || []).filter(x => x.idx !== o.idx);
+    const sameNameDiffAddr = sameName.filter(x => jaccard(x.address, o.address) < 0.4);
+    if(sameNameDiffAddr.length){
+      score += 25;
+      reasons.push(`Customer name "${o.customerName}" appears with ${sameNameDiffAddr.length} different address(es) in this batch — could indicate a shared/fake identity being reused.`);
+    }
+
+    const pinPeers = (pinGroups[o.pin] || []).length;
+    if(pinPeers >= 3 && n >= 8 && pinPeers / n > 0.15){
+      score += 10;
+      reasons.push(`PIN code ${o.pin} accounts for ${pinPeers} of ${n} orders in this batch — unusually concentrated for one delivery area.`);
+    }
+
+    if(o.qty != null && qStd > 0 && (o.qty - qMean) / qStd > 2){
+      score += 10;
+      reasons.push(`Order quantity (${o.qty}) is a statistical outlier vs. the batch average (${qMean.toFixed(1)}) — bulk orders are more prone to return/cancellation abuse.`);
+    } else if(o.qty != null && o.qty >= 4){
+      score += 8;
+      reasons.push(`Quantity (${o.qty}) is notably high for a single sub-order.`);
+    }
+
+    if(o.value != null && vStd > 0 && Math.abs(o.value - vMean) / vStd > 2){
+      score += 8;
+      reasons.push(`Order value (₹${o.value}) is a statistical outlier vs. the batch average (₹${vMean.toFixed(0)}).`);
+    }
+
+    if(!o.pin || o.sku === '(unreadable)' || !o.customerName || o.customerName === '(unreadable)'){
+      reasons.push('Some fields could not be read cleanly from the PDF — treat this row as lower-confidence.');
+    }
+
+    score = Math.min(100, score);
+    o.riskScore = score;
+    o.riskLevel = score >= 50 ? 'high' : score >= 25 ? 'medium' : 'low';
+    o.reasons = reasons;
+  });
+}
+
+// ---------- Rendering ----------
+function kpiIcon(name){
+  const icons = {
+    total: '<path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    high: '<path d="M12 9v4M12 17h.01M10.3 3.9L2.7 17a1.5 1.5 0 001.3 2.2h16a1.5 1.5 0 001.3-2.2L13.7 3.9a1.5 1.5 0 00-2.6 0z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+    medium: '<path d="M12 8v4M12 16h.01M12 3l9 16H3L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+    clean: '<path d="M9 12l2 2 4-4M12 3l8 4v5c0 4.5-3 8.5-8 9-5-.5-8-4.5-8-9V7l8-4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+    exchange: '<path d="M4 7h13l-3-3M20 17H7l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+  };
+  return `<svg viewBox="0 0 24 24" fill="none">${icons[name]}</svg>`;
+}
+
+function renderResults(orders){
+  const n = orders.length;
+  const high = orders.filter(o=>o.riskLevel==='high');
+  const medium = orders.filter(o=>o.riskLevel==='medium');
+  const low = orders.filter(o=>o.riskLevel==='low' && o.orderType!=='Exchange');
+  const exchangeOrders = orders.filter(o=>o.orderType==='Exchange');
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-icon">${kpiIcon('total')}</div>
+      <div class="num">${n}</div><div class="lbl">Total orders</div>
+    </div>
+    <div class="kpi danger">
+      <div class="kpi-icon">${kpiIcon('high')}</div>
+      <div class="num">${high.length}</div><div class="lbl">Likely fake</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-icon">${kpiIcon('medium')}</div>
+      <div class="num">${medium.length}</div><div class="lbl">Watchlist</div>
+    </div>
+    <div class="kpi info">
+      <div class="kpi-icon">${kpiIcon('exchange')}</div>
+      <div class="num">${exchangeOrders.length}</div><div class="lbl">Exchange (no profit)</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-icon">${kpiIcon('clean')}</div>
+      <div class="num">${low.length}</div><div class="lbl">Normal orders</div>
+    </div>
+  `;
+
+  const flagged = [...high, ...medium].sort((a,b)=>b.riskScore-a.riskScore);
+  document.getElementById('flagSub').textContent = flagged.length
+    ? `${flagged.length} order${flagged.length===1?'':'s'} ranked by priority — highest risk first`
+    : '';
+
+  const flagList = document.getElementById('flagList');
+  if(!flagged.length){
+    flagList.innerHTML = `
+      <div class="clean-state">
+        <div class="icon-circle">${kpiIcon('clean')}</div>
+        <h3>No fraud-risk orders found</h3>
+        <p>Nothing in this batch shows duplicate-address, repeated-identity, or outlier patterns strong enough to flag.</p>
+      </div>`;
+  }else{
+    flagList.innerHTML = flagged.map((o,i) => `
+      <div class="flag-card ${o.riskLevel}">
+        <div class="flag-head">
+          <div class="rank-badge">#${i+1}</div>
+          <div class="flag-titles">
+            <div class="subno">${o.subOrderNo}</div>
+            <div class="sku">${escapeHtml(o.sku)}${o.size ? ' · '+escapeHtml(o.size) : ''}${o.color ? ' · '+escapeHtml(o.color) : ''}</div>
+          </div>
+          <span class="level-chip">${o.riskLevel==='high' ? 'Likely fake' : 'Watchlist'}</span>
+        </div>
+        <div class="signal-strength">
+          <span class="signal-dot ${o.reasons.length>=3?'strong':o.reasons.length===2?'medium':'mild'}"></span>
+          <span>${o.reasons.length>=3?'Multiple strong signals found':o.reasons.length===2?'A couple of matching signals found':'One signal found'}</span>
+        </div>
+        <div class="flag-body">
+          <div class="info-grid">
+            <div class="item"><div class="k">Customer</div><div class="v">${escapeHtml(o.customerName)}</div></div>
+            <div class="item"><div class="k">Location</div><div class="v">${escapeHtml(o.city||'—')}${o.state?', '+escapeHtml(o.state):''}</div></div>
+            <div class="item"><div class="k">PIN</div><div class="v mono">${o.pin || '—'}</div></div>
+            <div class="item"><div class="k">Payment</div><div class="v">${o.payment}</div></div>
+            <div class="item"><div class="k">Qty</div><div class="v">${o.qty ?? '—'}</div></div>
+            <div class="item"><div class="k">Value</div><div class="v">${o.value!=null ? '₹'+o.value.toFixed(2) : '—'}</div></div>
+          </div>
+          <div class="why-label">Why this order is flagged as fake</div>
+          <ul class="reasons">${o.reasons.map(r=>`<li>${escapeHtml(r)}</li>`).join('')}</ul>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const exchangeHead = document.getElementById('exchangeHead');
+  const exchangeBlock = document.getElementById('exchangeBlock');
+  if(exchangeOrders.length){
+    exchangeHead.style.display = '';
+    exchangeBlock.style.display = '';
+    document.getElementById('exchangeSub').textContent = `${exchangeOrders.length} order${exchangeOrders.length===1?'':'s'} — replacement shipments with no added revenue`;
+    document.getElementById('exchangeList').innerHTML = exchangeOrders.map((o,i) => `
+      <div class="flag-card exchange">
+        <div class="flag-head">
+          <div class="rank-badge">#${i+1}</div>
+          <div class="flag-titles">
+            <div class="subno">${o.subOrderNo}</div>
+            <div class="sku">${escapeHtml(o.sku)}${o.size ? ' · '+escapeHtml(o.size) : ''}${o.color ? ' · '+escapeHtml(o.color) : ''}</div>
+          </div>
+          <span class="level-chip">Exchange</span>
+        </div>
+        <div class="flag-body">
+          <div class="info-grid">
+            <div class="item"><div class="k">Customer</div><div class="v">${escapeHtml(o.customerName)}</div></div>
+            <div class="item"><div class="k">Location</div><div class="v">${escapeHtml(o.city||'—')}${o.state?', '+escapeHtml(o.state):''}</div></div>
+            <div class="item"><div class="k">PIN</div><div class="v mono">${o.pin || '—'}</div></div>
+            <div class="item"><div class="k">Order value</div><div class="v">${o.value!=null ? '₹'+o.value.toFixed(2) : '—'}</div></div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }else{
+    exchangeHead.style.display = 'none';
+    exchangeBlock.style.display = 'none';
+  }
+
+  renderStateInsights(orders);
+  populateStateDropdown(orders);
+  renderSizeSuggestions(orders);
+  renderStateSizeTable(orders);
+  renderTable(orders);
+  resultsSection.classList.add('show');
+}
+
+function renderTable(orders){
+  let rows = [...orders].sort((a,b)=>b.riskScore-a.riskScore);
+  if(issuesOnly.checked){ rows = rows.filter(o=>o.riskLevel!=='low' || o.orderType==='Exchange'); }
+  document.getElementById('orderRows').innerHTML = rows.map(o => `
+    <tr>
+      <td><span class="risk-tag ${o.riskLevel}">${o.riskLevel}</span>${o.orderType==='Exchange' ? '<span class="type-tag">Exchange</span>' : ''}</td>
+      <td class="mono">${o.subOrderNo}</td>
+      <td class="mono">${escapeHtml(o.sku)}${o.size ? ' ('+escapeHtml(o.size)+')' : ''}</td>
+      <td>${escapeHtml(o.customerName)}</td>
+      <td>${escapeHtml(o.city || '—')}${o.state ? ', ' + escapeHtml(o.state) : ''}</td>
+      <td class="mono">${o.pin || '—'}</td>
+      <td>${o.payment}</td>
+      <td>${o.qty ?? '—'}</td>
+      <td>${o.value != null ? '₹'+o.value.toFixed(2) : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>
